@@ -1,13 +1,15 @@
-from datetime import datetime
+import os
 import requests
 import time
 
+from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from sqlalchemy import create_engine, Column, Integer, String, DateTime
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 Base = declarative_base()
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 
 class Question(Base):
@@ -21,7 +23,7 @@ class Question(Base):
 
 app = FastAPI()
 
-engine = create_engine("sqlite:///quiz.db")
+engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base.metadata.create_all(bind=engine)
@@ -42,16 +44,14 @@ async def fetch_from_api(questions_num: int):
 
 async def store_question_if_not_exists(db, item: dict):
     while True:
-        existing_question = db.query(Question).filter(
-            Question.question == item['question']).first()
+        existing_question = db.query(Question).filter(Question.question == item["question"]).first()
         if existing_question:
             time.sleep(10)
             continue
         question = Question(
-            question=item['question'],
-            answer=item['answer'],
-            created_at=datetime.fromisoformat(
-                item['created_at'].replace('Z', '+00:00'))
+            question=item["question"],
+            answer=item["answer"],
+            created_at=datetime.fromisoformat(item["created_at"].replace("Z", "+00:00")),
         )
         db.add(question)
         try:
@@ -59,16 +59,14 @@ async def store_question_if_not_exists(db, item: dict):
             return question
         except SQLAlchemyError:
             db.rollback()
-            print(
-                "Failed to commit new question to the database. Rolling back.")
+            print("Failed to commit new question to the database. Rolling back.")
 
 
 @app.post("/quiz/")
 async def generate_questions(request: dict) -> dict:
     questions_num: int = request.get("questions_num", 0)
     if questions_num <= 0:
-        raise HTTPException(status_code=400,
-                            detail="Number of questions must be greater than 0.")
+        raise HTTPException(status_code=400, detail="Number of questions must be greater than 0.")
 
     db = SessionLocal()
 
@@ -87,7 +85,7 @@ async def generate_questions(request: dict) -> dict:
             "id": last_question.id,
             "question": last_question.question,
             "answer": last_question.answer,
-            "created_at": last_question.created_at
+            "created_at": last_question.created_at,
         }
     else:
         return {}

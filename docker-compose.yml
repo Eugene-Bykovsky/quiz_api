@@ -1,23 +1,30 @@
-version: '3'
+version: '3.8'
 services:
   app:
     build:
-      context: .
+      context: api/.
       dockerfile: Dockerfile
+    command: uvicorn api.app:app --host 0.0.0.0 --port 8000
     ports:
       - '8000:8000'
     depends_on:
       - db
+    environment:
+      - DATABASE_URL=postgresql://testuser:testpassword@db/quizdb
+    volumes:
+      - .:/app
 
   db:
-    image: postgres
+    image: postgres:13
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: mydatabase
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpassword
+      POSTGRES_DB: quizdb
+    ports:
+      - '54320:5432'
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data/
 
 volumes:
-  db_data:
+  postgres_data:
